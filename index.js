@@ -83,6 +83,41 @@ async function run() {
       }
     });
 
+    // update a lesson by ID
+    app.patch("/api/lessons/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const updatedData = req.body;
+
+        const result = await lessonCollection.updateOne(
+          {
+            _id: new ObjectId(id),
+          },
+          {
+            $set: {
+              title: updatedData.title,
+              description: updatedData.description,
+              category: updatedData.category,
+              tone: updatedData.tone,
+              image: updatedData.image || "",
+              accessLevel:
+                updatedData.accessLevel || "free",
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          message: "Failed to update lesson",
+        });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
