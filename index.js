@@ -41,6 +41,24 @@ async function run() {
         res.send(result);
     })
 
+    // get user specific lesson
+    app.get("/api/lessons", async (req, res) => {
+        const { userId } = req.query;
+      
+        const query = {};
+      
+        if (userId) {
+          query.userId = userId;
+        }
+      
+        const lessons = await lessonCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .toArray();
+      
+        res.send(lessons);
+      });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
