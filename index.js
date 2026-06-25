@@ -7,7 +7,7 @@ require('dotenv').config();
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
@@ -36,28 +36,52 @@ async function run() {
 
     // post a lesson
     app.post('/api/lessons', async (req, res) => {
-        const lesson = req.body;
-        const result = await lessonCollection.insertOne(lesson);
-        res.send(result);
+      const lesson = req.body;
+      const result = await lessonCollection.insertOne(lesson);
+      res.send(result);
     })
 
     // get user specific lesson
     app.get("/api/lessons", async (req, res) => {
-        const { userId } = req.query;
-      
-        const query = {};
-      
-        if (userId) {
-          query.userId = userId;
+      const { userId } = req.query;
+
+      const query = {};
+
+      if (userId) {
+        query.userId = userId;
+      }
+
+      const lessons = await lessonCollection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(lessons);
+    });
+
+    // Get single lesson by ID
+    app.get("/api/lessons/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const lesson = await lessonCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!lesson) {
+          return res.status(404).send({
+            message: "Lesson not found",
+          });
         }
-      
-        const lessons = await lessonCollection
-          .find(query)
-          .sort({ createdAt: -1 })
-          .toArray();
-      
-        res.send(lessons);
-      });
+
+        res.send(lesson);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({
+          message: "Failed to fetch lesson",
+        });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
