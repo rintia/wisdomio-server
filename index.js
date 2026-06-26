@@ -33,6 +33,7 @@ async function run() {
 
     const database = client.db("wisdomio_db");
     const lessonCollection = database.collection("lessons");
+    const commentCollection = database.collection("comments");
 
     // post a lesson
     app.post('/api/lessons', async (req, res) => {
@@ -171,6 +172,62 @@ async function run() {
         res.send(comments);
       } catch (error) {
         res.status(500).send(error);
+      }
+    });
+
+    // add like to a lesson
+    app.patch("/api/lessons/:id/like", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { userId } = req.body;
+
+        const lesson = await lessonCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!lesson) {
+          return res.status(404).send({
+            message: "Lesson not found",
+          });
+        }
+
+        const alreadyLiked = lesson.likes?.includes(userId);
+
+        let result;
+
+        if (alreadyLiked) {
+          result = await lessonCollection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+              $pull: {
+                likes: userId,
+              },
+              $inc: {
+                likesCount: -1,
+              },
+            }
+          );
+        } else {
+          result = await lessonCollection.updateOne(
+            { _id: new ObjectId(id) },
+            {
+              $addToSet: {
+                likes: userId,
+              },
+              $inc: {
+                likesCount: 1,
+              },
+            }
+          );
+        }
+
+        const updatedLesson = await lessonCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        res.send(updatedLesson);
+      } catch (err) {
+        res.status(500).send(err);
       }
     });
 
