@@ -41,7 +41,7 @@ async function run() {
       res.send(result);
     })
 
-      // public lessons
+    // public lessons
     app.get("/api/lessons/public", async (req, res) => {
       const lessons = await lessonCollection
         .find({ visibility: "public" })
@@ -128,6 +128,32 @@ async function run() {
       }
     });
 
+    // post a comment to a lesson
+    app.post("/api/comments", async (req, res) => {
+      try {
+        const comment = req.body;
+
+        comment.createdAt = new Date();
+
+        const result = await commentCollection.insertOne(comment);
+
+        await lessonCollection.updateOne(
+          {
+            _id: new ObjectId(comment.lessonId),
+          },
+          {
+            $inc: {
+              commentsCount: 1,
+            },
+          }
+        );
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send(error);
+      }
+    });
+
     // delete a lesson by ID
     app.delete("/api/lessons/:id", async (req, res) => {
       try {
@@ -148,7 +174,7 @@ async function run() {
       }
     });
 
-  
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
