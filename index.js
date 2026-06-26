@@ -292,6 +292,42 @@ async function run() {
       }
     });
 
+    // get favorite lessons
+    app.get("/api/lessons/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { userId } = req.query;
+
+        const lesson = await lessonCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!lesson) {
+          return res.status(404).send({
+            message: "Lesson not found",
+          });
+        }
+
+        let isSaved = false;
+
+        if (userId) {
+          const favorite = await favoriteCollection.findOne({
+            lessonId: id,
+            userId,
+          });
+
+          isSaved = !!favorite;
+        }
+
+        res.send({
+          ...lesson,
+          isSaved,
+        });
+      } catch (err) {
+        res.status(500).send(err);
+      }
+    });
+
     // delete a lesson by ID
     app.delete("/api/lessons/:id", async (req, res) => {
       try {
