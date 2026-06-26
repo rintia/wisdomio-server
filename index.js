@@ -34,6 +34,7 @@ async function run() {
     const database = client.db("wisdomio_db");
     const lessonCollection = database.collection("lessons");
     const commentCollection = database.collection("comments");
+    const favoriteCollection = database.collection("favorites");
 
     // post a lesson
     app.post('/api/lessons', async (req, res) => {
@@ -226,6 +227,66 @@ async function run() {
         });
 
         res.send(updatedLesson);
+      } catch (err) {
+        res.status(500).send(err);
+      }
+    });
+
+
+    // save a lesson to favorites
+
+    app.patch("/api/lessons/:id/favorite", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const { userId } = req.body;
+
+        const favorite = await favoriteCollection.findOne({
+          lessonId: id,
+          userId,
+        });
+
+        if (favorite) {
+          await favoriteCollection.deleteOne({
+            _id: favorite._id,
+          });
+
+          await lessonCollection.updateOne(
+            {
+              _id: new ObjectId(id),
+            },
+            {
+              $inc: {
+                savesCount: -1,
+              },
+            }
+          );
+
+          return res.send({
+            saved: false,
+          });
+        }
+
+        await favoriteCollection.insertOne({
+          lessonId: id,
+          userId,
+          createdAt: new Date(),
+        });
+
+        await lessonCollection.updateOne(
+          {
+            _id: new ObjectId(id),
+          },
+          {
+            $inc: {
+              savesCount: 1,
+            },
+          }
+        );
+
+        res.send({
+          saved: true,
+        });
       } catch (err) {
         res.status(500).send(err);
       }
