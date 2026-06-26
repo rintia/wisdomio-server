@@ -154,6 +154,26 @@ async function run() {
       }
     });
 
+    // get comments for a lesson
+    app.get("/api/comments", async (req, res) => {
+      try {
+        const { lessonId } = req.query;
+
+        const comments = await commentCollection
+          .find({
+            lessonId,
+          })
+          .sort({
+            createdAt: -1,
+          })
+          .toArray();
+
+        res.send(comments);
+      } catch (error) {
+        res.status(500).send(error);
+      }
+    });
+
     // delete a lesson by ID
     app.delete("/api/lessons/:id", async (req, res) => {
       try {
