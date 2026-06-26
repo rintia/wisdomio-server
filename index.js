@@ -41,6 +41,16 @@ async function run() {
       res.send(result);
     })
 
+      // public lessons
+    app.get("/api/lessons/public", async (req, res) => {
+      const lessons = await lessonCollection
+        .find({ visibility: "public" })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(lessons);
+    });
+
     // get user specific lesson
     app.get("/api/lessons", async (req, res) => {
       const { userId } = req.query;
@@ -117,6 +127,28 @@ async function run() {
         });
       }
     });
+
+    // delete a lesson by ID
+    app.delete("/api/lessons/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const result =
+          await lessonCollection.deleteOne({
+            _id: new ObjectId(id),
+          });
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          message: "Failed to delete lesson",
+        });
+      }
+    });
+
+  
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
