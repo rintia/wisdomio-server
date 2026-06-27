@@ -397,6 +397,28 @@ app.delete(
   }
 );
 
+// update lesson visibility
+app.patch("/api/lessons/:id/visibility", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { visibility } = req.body;
+
+    const result = await lessonCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          visibility,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    );
+
+    res.send(result);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
     // delete a lesson by ID
     app.delete("/api/lessons/:id", async (req, res) => {
       try {
