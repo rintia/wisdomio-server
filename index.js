@@ -53,6 +53,62 @@ async function run() {
       res.send(lessons);
     });
 
+    // most saved lessons
+    app.get("/api/lessons/most-saved", async (req, res) => {
+      try {
+        const lessons = await lessonCollection
+          .find({ visibility: "public" })
+          .sort({ savesCount: -1 })
+          .limit(3)
+          .toArray();
+
+        res.send(lessons);
+      } catch (err) {
+        res.status(500).send(err);
+      }
+    });
+
+    app.get("/api/contributors/top", async (req, res) => {
+      try {
+        const contributors = await lessonCollection.aggregate([
+          {
+            $match: {
+              visibility: "public",
+            },
+          },
+          {
+            $group: {
+              _id: "$userId",
+              name: {
+                $first: "$author",
+              },
+              image: {
+                $first: "$authorImage",
+              },
+              lessonCount: {
+                $sum: 1,
+              },
+            },
+          },
+          {
+            $sort: {
+              lessonCount: -1,
+            },
+          },
+          {
+            $limit: 4,
+          },
+        ]).toArray();
+
+        res.send(contributors);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({
+          message: "Failed to fetch contributors",
+        });
+      }
+    });
+
     // get user specific lesson
     app.get("/api/lessons", async (req, res) => {
       const { userId } = req.query;
@@ -243,7 +299,7 @@ async function run() {
 
         const favorite = await favoriteCollection.findOne({
           lessonId: id,
-          userId,  
+          userId,
         });
 
         if (favorite) {
@@ -331,93 +387,93 @@ async function run() {
     // get favorite lessons for a user
     const { ObjectId } = require("mongodb");
 
-app.get("/api/favorites/:userId", async (req, res) => {
-  try {
-    const { userId } = req.params;
+    app.get("/api/favorites/:userId", async (req, res) => {
+      try {
+        const { userId } = req.params;
 
-    const favorites = await favoriteCollection
-      .find({ userId })
-      .sort({ createdAt: -1 })
-      .toArray();
+        const favorites = await favoriteCollection
+          .find({ userId })
+          .sort({ createdAt: -1 })
+          .toArray();
 
-    const lessonIds = favorites.map(
-      (f) => new ObjectId(f.lessonId)
-    );
+        const lessonIds = favorites.map(
+          (f) => new ObjectId(f.lessonId)
+        );
 
-    const lessons = await lessonCollection
-      .find({
-        _id: {
-          $in: lessonIds,
-        },
-      })
-      .toArray();
+        const lessons = await lessonCollection
+          .find({
+            _id: {
+              $in: lessonIds,
+            },
+          })
+          .toArray();
 
-    const data = favorites.map((favorite) => ({
-      ...favorite,
-      lesson: lessons.find(
-        (l) => l._id.toString() === favorite.lessonId
-      ),
-    }));
+        const data = favorites.map((favorite) => ({
+          ...favorite,
+          lesson: lessons.find(
+            (l) => l._id.toString() === favorite.lessonId
+          ),
+        }));
 
-    res.send(data);
-  } catch (err) {
-    res.status(500).send(err);
-  }
-});
+        res.send(data);
+      } catch (err) {
+        res.status(500).send(err);
+      }
+    });
 
-// remove a lesson from favorites
-app.delete(
-  "/api/favorites/:lessonId/:userId",
-  async (req, res) => {
-    try {
-      const { lessonId, userId } = req.params;
+    // remove a lesson from favorites
+    app.delete(
+      "/api/favorites/:lessonId/:userId",
+      async (req, res) => {
+        try {
+          const { lessonId, userId } = req.params;
 
-      await favoriteCollection.deleteOne({
-        lessonId,
-        userId,
-      });
+          await favoriteCollection.deleteOne({
+            lessonId,
+            userId,
+          });
 
-      await lessonCollection.updateOne(
-        {
-          _id: new ObjectId(lessonId),
-        },
-        {
-          $inc: {
-            savesCount: -1,
-          },
+          await lessonCollection.updateOne(
+            {
+              _id: new ObjectId(lessonId),
+            },
+            {
+              $inc: {
+                savesCount: -1,
+              },
+            }
+          );
+
+          res.send({
+            deleted: true,
+          });
+        } catch (err) {
+          res.status(500).send(err);
         }
-      );
-
-      res.send({
-        deleted: true,
-      });
-    } catch (err) {
-      res.status(500).send(err);
-    }
-  }
-);
-
-// update lesson visibility
-app.patch("/api/lessons/:id/visibility", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { visibility } = req.body;
-
-    const result = await lessonCollection.updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          visibility,
-          updatedAt: new Date().toISOString(),
-        },
       }
     );
 
-    res.send(result);
-  } catch (err) {
-    res.status(500).send(err);
-  }
-});
+    // update lesson visibility
+    app.patch("/api/lessons/:id/visibility", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { visibility } = req.body;
+
+        const result = await lessonCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              visibility,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        );
+
+        res.send(result);
+      } catch (err) {
+        res.status(500).send(err);
+      }
+    });
 
     // delete a lesson by ID
     app.delete("/api/lessons/:id", async (req, res) => {
