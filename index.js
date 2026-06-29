@@ -645,6 +645,141 @@ async function run() {
       }
     });
 
+    // user growth
+    app.get("/api/admin/user-growth", async (req, res) => {
+  try {
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 9);
+    tenDaysAgo.setHours(0, 0, 0, 0);
+
+    const growth = await userCollection
+      .aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: tenDaysAgo,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
+              day: { $dayOfMonth: "$createdAt" },
+            },
+            users: {
+              $sum: 1,
+            },
+          },
+        },
+        {
+          $sort: {
+            "_id.year": 1,
+            "_id.month": 1,
+            "_id.day": 1,
+          },
+        },
+      ])
+      .toArray();
+
+    const data = growth.map((item) => ({
+      day: `${item._id.day}/${item._id.month}`,
+      users: item.users,
+    }));
+
+    res.send(data);
+  } catch (err) {
+    res.status(500).send({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+// lesson growth
+app.get("/api/admin/lesson-growth", async (req, res) => {
+  try {
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 9);
+    tenDaysAgo.setHours(0, 0, 0, 0);
+
+    const growth = await lessonCollection
+  .aggregate([
+    {
+      $addFields: {
+        createdDate: {
+          $toDate: "$createdAt",
+        },
+      },
+    },
+    {
+      $match: {
+        createdDate: {
+          $gte: tenDaysAgo,
+        },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          year: {
+            $year: "$createdDate",
+          },
+          month: {
+            $month: "$createdDate",
+          },
+          day: {
+            $dayOfMonth: "$createdDate",
+          },
+        },
+        lessons: {
+          $sum: 1,
+        },
+      },
+    },
+    {
+      $sort: {
+        "_id.year": 1,
+        "_id.month": 1,
+        "_id.day": 1,
+      },
+    },
+  ])
+  .toArray();
+
+    // Create the last 10 days with 0 values
+    const data = [];
+
+    for (let i = 9; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+
+      const found = growth.find(
+        (g) =>
+          g._id.day === day &&
+          g._id.month === month &&
+          g._id.year === date.getFullYear()
+      );
+
+      data.push({
+        day: `${day}/${month}`,
+        lessons: found ? found.lessons : 0,
+      });
+    }
+
+    res.send(data);
+  } catch (err) {
+    res.status(500).send({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
     // remove a lesson from favorites
     app.delete(
       "/api/favorites/:lessonId/:userId",
